@@ -44,8 +44,9 @@
 
 ## 当前状态
 
-- M0-M5 全部完成：CLI（task/show/report/validate/view/done/feedback/serve）、只读 TUI、MCP server、增量 review、skill 文档（`skills/yacr-review/SKILL.md`）
-- 后续候选见 TODO.md「后续候选」
+- M0-M5 全部完成：CLI（task/show/report/validate/view/done/feedback/serve/config）、只读 TUI、MCP server、增量 review、skill 文档（`skills/yacr-review/SKILL.md`）
+- 范围解析 v2（ADR-0007 无启发式 + yacr config base）与 agent-usable 硬化已完成
+- 后续候选见 TODO.md「后续候选」（等真实使用反馈排优先级）
 
 ## 自测试方案（安全、可复现、不越界）
 
