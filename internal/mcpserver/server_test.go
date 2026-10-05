@@ -45,7 +45,7 @@ func call(t *testing.T, repoDir string, requests []string) []resp {
 		in.WriteString("\n")
 	}
 	var out bytes.Buffer
-	if err := mcpserver.New(repoDir).Serve(&in, &out); err != nil {
+	if err := mcpserver.New(repoDir, "").Serve(&in, &out); err != nil {
 		t.Fatal(err)
 	}
 	var resps []resp

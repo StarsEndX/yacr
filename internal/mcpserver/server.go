@@ -16,10 +16,11 @@ const protocolVersion = "2025-06-18"
 
 type Server struct {
 	repoDir string
+	target  string
 }
 
-func New(repoDir string) *Server {
-	return &Server{repoDir: repoDir}
+func New(repoDir, target string) *Server {
+	return &Server{repoDir: repoDir, target: target}
 }
 
 type rpcRequest struct {
@@ -191,7 +192,7 @@ func toolResult(v any, err error, verr *report.ValError) (string, bool, *rpcErro
 }
 
 func (s *Server) callTool(name string, args json.RawMessage) (string, bool, *rpcError) {
-	ctx, err := app.Load(s.repoDir, "")
+	ctx, err := app.Load(s.repoDir, s.target)
 	if err != nil {
 		b, _ := json.Marshal(map[string]any{"error": map[string]any{
 			"code": "no_task", "message": err.Error(),

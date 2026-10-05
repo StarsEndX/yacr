@@ -23,7 +23,7 @@ func cmdServe(args []string) (error, int) {
 	if err != nil {
 		return fmt.Errorf("MCP server 需要在 git 仓库内运行: %w", err), 1
 	}
-	if err := mcpserver.New(repoDir).Serve(os.Stdin, os.Stdout); err != nil {
+	if err := mcpserver.New(repoDir, g.target).Serve(os.Stdin, os.Stdout); err != nil {
 		return fmt.Errorf("MCP server 退出: %w", err), 1
 	}
 	return nil, 0
