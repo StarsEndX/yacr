@@ -41,7 +41,7 @@ func cmdReportList(args []string) (error, int) {
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("参数错误: %w", err), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}
@@ -129,7 +129,7 @@ func cmdReportUpsert(args []string) (error, int) {
 		}
 	}
 
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}
@@ -222,7 +222,7 @@ func cmdReportDelete(args []string) (error, int) {
 	if err := fs.Parse(rest); err != nil || fs.NArg() != 1 {
 		return fmt.Errorf("用法: yacr report delete <id|slug>"), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}
@@ -255,7 +255,7 @@ func cmdReportSummary(args []string) (error, int) {
 	if err := fs.Parse(rest); err != nil {
 		return fmt.Errorf("参数错误: %w", err), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}
@@ -301,7 +301,7 @@ func cmdValidate(args []string) (error, int) {
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("参数错误: %w", err), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}
@@ -352,7 +352,7 @@ func cmdDone(args []string) (error, int) {
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("参数错误: %w", err), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}

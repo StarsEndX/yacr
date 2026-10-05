@@ -8,7 +8,7 @@ import (
 func cmdView(args []string) (error, int) {
 	var g globalFlags
 	_ = parseGlobal(&g, args)
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}

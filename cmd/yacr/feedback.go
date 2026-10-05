@@ -20,7 +20,7 @@ func cmdFeedback(args []string) (error, int) {
 	if err := fs.Parse(rest); err != nil {
 		return fmt.Errorf("参数错误: %w", err), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}

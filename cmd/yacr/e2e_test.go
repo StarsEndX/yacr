@@ -334,3 +334,51 @@ func TestE2EVersion(t *testing.T) {
 		t.Fatalf("version: code=%d out=%q", res.code, res.stdout)
 	}
 }
+
+func TestE2ETargetFlag(t *testing.T) {
+	r := setupRepo(t)
+	res := runYacr(t, r.Dir, "", "task", "--json")
+	if res.code != 0 {
+		t.Fatalf("task: %s", res.stderr)
+	}
+	var first struct {
+		TargetID string `json:"target_id"`
+	}
+	if err := json.Unmarshal([]byte(res.stdout), &first); err != nil {
+		t.Fatal(err)
+	}
+	if res := runYacr(t, r.Dir, upsertJSON("all", "全解释", "x",
+		[]map[string]any{
+			loc("app.go", "new", 3, 9), loc("app.go", "old", 3, 3),
+			loc("auth.go", "new", 1, 3),
+		}, nil), "report", "upsert", "--file", "-"); res.code != 0 {
+		t.Fatalf("upsert: %s\n%s", res.stdout, res.stderr)
+	}
+
+	r.Write("auth.go", "package main\n\nfunc login(u string) bool { return len(u) > 0 }\n")
+	r.Commit("fix: strict")
+	res = runYacr(t, r.Dir, "", "task", "--json")
+	if res.code != 0 {
+		t.Fatalf("task2: %s", res.stderr)
+	}
+	var second struct {
+		TargetID string `json:"target_id"`
+	}
+	json.Unmarshal([]byte(res.stdout), &second)
+	if second.TargetID == first.TargetID {
+		t.Fatal("current 应已切换到新任务")
+	}
+
+	res = runYacr(t, r.Dir, "", "validate")
+	if res.code != 2 {
+		t.Fatalf("新任务默认上下文应不完整: %d", res.code)
+	}
+	res = runYacr(t, r.Dir, "", "validate", "--target", first.TargetID)
+	if res.code != 0 {
+		t.Fatalf("--target 旧任务应完整: code=%d\n%s\n%s", res.code, res.stdout, res.stderr)
+	}
+	res = runYacr(t, r.Dir, "", "report", "list", "--target", first.TargetID, "--json")
+	if res.code != 0 || !strings.Contains(res.stdout, "全解释") {
+		t.Fatalf("report list --target: %s", res.stdout)
+	}
+}

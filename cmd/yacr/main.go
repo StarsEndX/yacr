@@ -47,8 +47,9 @@ func usage() string {
                输出版本号
 
 全局:
-  --repo <dir>   目标仓库目录（默认当前目录）
-  --json         机器可读输出（供 agent 消费）
+  --repo <dir>      目标仓库目录（默认当前目录）
+  --target <id>     指定 review 任务 id（默认 .yacr/current 指向的任务）
+  --json            机器可读输出（供 agent 消费）
 `
 }
 
@@ -126,8 +127,9 @@ func asValError(err error, target **report.ValError) bool {
 }
 
 type globalFlags struct {
-	repo string
-	json bool
+	repo   string
+	json   bool
+	target string
 }
 
 func parseGlobal(flags *globalFlags, args []string) []string {
@@ -141,6 +143,12 @@ func parseGlobal(flags *globalFlags, args []string) []string {
 			i += 2
 		case strings.HasPrefix(a, "--repo="):
 			flags.repo = strings.TrimPrefix(a, "--repo=")
+			i++
+		case a == "--target" && i+1 < len(args):
+			flags.target = args[i+1]
+			i += 2
+		case strings.HasPrefix(a, "--target="):
+			flags.target = strings.TrimPrefix(a, "--target=")
 			i++
 		case a == "--json":
 			flags.json = true

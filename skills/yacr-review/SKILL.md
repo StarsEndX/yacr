@@ -41,6 +41,7 @@ yacr report upsert --file entry.json                   # 或提交 EntryInput JS
 yacr report delete <id|slug>
 yacr report summary "<总评文本>"
 yacr validate [--json]                                 # exit 2 = 覆盖不完整
+# 所有命令支持 --repo <dir> 与 --target <任务id>（默认 .yacr/current 指向的任务）
 yacr feedback [-o out.md]                              # 导出 markdown 摘要
 ```
 

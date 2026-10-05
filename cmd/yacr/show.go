@@ -106,7 +106,7 @@ func cmdShow(args []string) (error, int) {
 	if fs.NArg() > 1 {
 		return fmt.Errorf("show 只接受一个参数: <file>[:<line>[-<end>]][:<side>]"), 1
 	}
-	ctx, err := loadCtx(g, "")
+	ctx, err := loadCtx(g, g.target)
 	if err != nil {
 		return err, 1
 	}

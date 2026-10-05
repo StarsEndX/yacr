@@ -91,7 +91,7 @@ AI 侧（任意 agent，两种通道同语义）:
 | MCP stdio 服务 | `yacr serve` | — |
 
 - 每次 upsert/delete 即时校验并返回剩余未覆盖行；失败返回结构化 ValError（code + 中文 message），条目不落盘
-- `--json` 输出供 agent 消费；`.yacr/` 由 filelock 保护并发，CLI 与 MCP 可混用
+- `--json` 输出供 agent 消费；全局 `--repo <dir>` / `--target <任务id>`（默认 current 指针）；`.yacr/` 由 filelock 保护并发，CLI 与 MCP 可混用
 - 定位格式：`{"file","side":"new|old","start","end"}`；文件级条目只给 `file`；rename 的 new 侧用新路径、old 侧用旧路径
 
 ## 6. AI 侧方法论（skill 模板，可选）
