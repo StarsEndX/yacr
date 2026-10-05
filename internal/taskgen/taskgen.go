@@ -203,7 +203,7 @@ func resolveBase(g *gitcmd.Git, opts Options) (sha string, refDesc string, incre
 			}
 		}
 	}
-	for _, cand := range []string{"develop", "main", "master"} {
+	for _, cand := range []string{"develop", "dev", "main", "master"} {
 		if g.HasRef(cand) {
 			sha, err := g.MergeBase(cand, "HEAD")
 			if err == nil {
