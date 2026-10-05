@@ -13,7 +13,7 @@
 
 ## 架构速览
 
-分层：`gitcmd`（git shell-out）→ `diffmodel`（diff 解析/hunk 编号/行级变更索引）→ `taskgen`（任务包）→ `report`（存储/接口/校验/覆盖率）→ `session`（reviewed-head）→ `tui`（只读）/ `mcpserver`。
+分层：`gitcmd`（git shell-out）→ `diffmodel`（diff 解析/hunk 编号/行级变更索引）→ `taskgen`（任务包）→ `report`（存储/接口/校验/覆盖率）→ `session`（reviewed-head）；`app` 为 CLI/MCP 共享上下文，`config` 记忆 base；出口 `tui`（只读）/ `mcpserver`。
 
 关键不变量：
 - 行级覆盖是核心可靠性机制：变更行全集必须被报告解释覆盖
@@ -21,14 +21,14 @@
 - 报告为工具所有，只能经固定接口（CLI/MCP 同语义）变更，每次变更即时校验
 - 报告不依赖 agent 的文件编辑能力
 - TUI 纯只读
-- 范围内无 merge commit（CI 负责真实合并），hunk/行 ID 在任务内全局稳定，分批不得重编号
+- merge commit 仅降噪容忍（meta 标记 merge:true、task 输出提示；真实合并由 CI 负责），hunk/行 ID 在任务内全局稳定
 
 ## 约定
 
 - 不写注释，除非用户要求
 - 错误处理：wrap with `%w`；对外 CLI 错误信息人类可读
 - 标识符英文，文档中文；解释内容默认中文（由 skill/prompt 约定）
-- 测试优先用 `t.TempDir()` + 真实 git 命令构造 fixture（gitcmd 已封装），diff 解析用 testdata golden files
+- 测试优先用 `t.TempDir()` + 真实 git 命令构造 fixture（`internal/fixture`），自动清理，不触碰真实仓库与全局 git 配置（身份经 `-c user.*` 与 env 注入）；diff 解析测试用内联 diff 文本（无 testdata/golden files）
 - commit message：conventional commits；不主动 commit/push
 - UI 文案中文
 

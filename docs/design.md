@@ -50,7 +50,7 @@ AI 侧（任意 agent，两种通道同语义）:
 
 | 文件 | 内容 |
 |---|---|
-| meta.json | base/head、branch、commits[]（sha/subject/body/files）、createdAt |
+| meta.json | target_id、base/head、branch、base_ref、incremental、createdAt、commits[]（sha/subject/body/merge/files） |
 | diff.patch | 原始 patch |
 | changes.jsonl | 行级变更索引 + blame 归因提示（该行来自范围内哪个 commit） |
 
@@ -70,6 +70,7 @@ AI 侧（任意 agent，两种通道同语义）:
   "entries": [
     {
       "id": "e-001",
+      "slug": "可选幂等键",
       "title": "短标题",
       "explanation": "agent 撰写的解释（自由内容，默认中文）",
       "locations": [{"file": "src/x.go", "side": "new", "start": 12, "end": 45}],
@@ -96,6 +97,7 @@ AI 侧（任意 agent，两种通道同语义）:
 | 按位置查变更事实+已有解释 | `yacr show <file>:<line>[:side]` | `query_location {file,line,side?}` |
 | 写/改条目 | `yacr report upsert` | `report_upsert` |
 | 删条目 | `yacr report delete <id|slug>` | `report_delete {id_or_slug}` |
+| 条目列表 | `yacr report list [--json]` | —（upsert/delete 响应已含条目与覆盖） |
 | 总评 | `yacr report summary` | `report_summary {text}` |
 | 校验与覆盖 | `yacr validate`（exit 2 = 不完整） | `validate` |
 | MCP stdio 服务 | `yacr serve` | — |
@@ -114,10 +116,10 @@ AI 侧（任意 agent，两种通道同语义）:
 
 ## 7. TUI（`yacr view`，只读）
 
-- 总览：覆盖率进度、条目列表（按文件分组 + 按 tag 过滤）、未覆盖清单醒目
-- 条目详情：explanation + 定位跳转 + 关联 hunk diff
-- diff 视图：行级渲染，已覆盖行/未覆盖行着色区分，行上悬浮解释摘要
-- 只读：无任何写操作；review 完成标记走 `yacr done`（CLI）
+- 总览：覆盖率、条目与未解释行混排列表（未解释醒目标注）、总评一行
+- 条目详情：slug/commits/tags + explanation + 定位列表（enter 打开关联 hunk diff）
+- diff 视图：行级渲染，已解释行 ● / 未解释行 ○ 着色区分；支持滚动、n/p 切换文件、N 跳到首个未解释
+- 只读：无任何写操作，也无搜索/过滤（后续候选，见 TODO）；review 完成标记走 `yacr done`（CLI）
 
 ## 8. 闭环
 
@@ -127,7 +129,7 @@ AI 侧（任意 agent，两种通道同语义）:
 
 ## 9. 边界与策略
 
-- 大 diff（patch > ~1MB）：按文件分批任务；行级索引全局稳定
+- 大 diff：暂不分批/告警（后续候选见 TODO.md）；hunk/行 ID 在任务内全局稳定
 - binary/submodule：文件级条目
 - 对话历史不采集；意图完全由 agent 调研得出
 - report 读写均经工具；`.yacr/` 整体 gitignore
@@ -135,14 +137,16 @@ AI 侧（任意 agent，两种通道同语义）:
 ## 10. 模块划分
 
 ```
-cmd/yacr/            task | show | report | validate | view | done | feedback | serve
+cmd/yacr/            task | show | report | validate | view | done | feedback | serve | config
 internal/gitcmd/     git shell-out 封装
 internal/diffmodel/  diff 解析、hunk 编号、行级变更索引
-internal/taskgen/    任务包生成
+internal/taskgen/    任务包生成（含范围解析与 base 候选）
 internal/report/     报告存储、固定接口语义、校验、覆盖率
 internal/session/    reviewed-head / 完成标记
+internal/app/        CLI/MCP 共享上下文（任务装载、查询、视图）
+internal/config/     .yacr/config（记忆 base）
 internal/tui/        bubbletea（只读）
 internal/mcpserver/  MCP server（tools 与 CLI 同语义）
+internal/fixture/    测试 fixture（真实 git + t.TempDir，无 golden files）
 skills/              方法论模板（agent 无关）
-testdata/            fixture repos / golden files
 ```
