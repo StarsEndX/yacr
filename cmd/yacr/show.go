@@ -82,6 +82,9 @@ func cmdTask(args []string) (error, int) {
 	fmt.Printf("  范围: %s..%s（分支 %s, base 来源: %s%s）\n", gitcmd.Short(res.Meta.Base), gitcmd.Short(res.Meta.Head), res.Meta.Branch, res.Meta.BaseRef, incrementalMark(res.Meta.Incremental))
 	fmt.Printf("  提交: %d 个, 文件: %d, hunk: %d, 变更行: %d, 文件级条目: %d\n",
 		res.Stats.Commits, res.Stats.Files, res.Stats.Hunks, res.Stats.ChangedLines, res.Stats.FileUnits)
+	if merges := countMerges(res.Meta.Commits); merges > 0 {
+		fmt.Printf("  注意: 范围含 %d 个 merge commit（综合 diff 已正确抵消同步内容；若范围异常请确认 base 为同步源）\n", merges)
+	}
 	fmt.Printf("  任务包: %s\n", res.Dir)
 	fmt.Println()
 	fmt.Println("下一步（交给 agent）:")
@@ -336,4 +339,14 @@ func joinInts(a []int) string {
 		parts = append(parts, fmt.Sprintf("%d", n))
 	}
 	return strings.Join(parts, ",")
+}
+
+func countMerges(commits []taskgen.CommitInfo) int {
+	n := 0
+	for _, c := range commits {
+		if c.Merge {
+			n++
+		}
+	}
+	return n
 }

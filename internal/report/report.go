@@ -203,6 +203,13 @@ func (s *Service) upsertLocked(targetID string, in EntryInput) (*UpsertResult, *
 		}
 	}
 
+	if in.Slug != "" && target != nil {
+		for _, e := range r.Entries {
+			if e.Slug == in.Slug && e.ID != target.ID {
+				return nil, valErr("duplicate_slug", "slug %q 已被条目 %s 使用", in.Slug, e.ID), nil
+			}
+		}
+	}
 	if strings.TrimSpace(in.Title) == "" {
 		return nil, valErr("invalid_entry", "title 不能为空"), nil
 	}
@@ -347,7 +354,7 @@ func (s *Service) resolveCommits(shas []string) ([]string, *ValError) {
 	seen := map[string]bool{}
 	for _, sha := range shas {
 		sha = strings.TrimSpace(sha)
-		full, ok := s.commits[sha]
+		full, ok := s.matchCommit(sha)
 		if !ok {
 			e := valErr("commit_unknown", "commit %q 不在 review 范围内", sha)
 			e.Details = validCommitsDetail(s.commits)
@@ -359,6 +366,25 @@ func (s *Service) resolveCommits(shas []string) ([]string, *ValError) {
 		}
 	}
 	return out, nil
+}
+
+func (s *Service) matchCommit(sha string) (string, bool) {
+	if full, ok := s.commits[sha]; ok {
+		return full, true
+	}
+	if len(sha) < 4 {
+		return "", false
+	}
+	var match string
+	for k, v := range s.commits {
+		if len(k) == 40 && strings.HasPrefix(k, sha) {
+			if match != "" && match != v {
+				return "", false
+			}
+			match = v
+		}
+	}
+	return match, match != ""
 }
 
 func validCommitsDetail(commits map[string]string) []string {

@@ -14,6 +14,19 @@ import (
 
 const protocolVersion = "2025-06-18"
 
+var knownProtocolVersions = map[string]bool{
+	"2024-11-05": true,
+	"2025-03-26": true,
+	"2025-06-18": true,
+}
+
+func negotiateVersion(requested string) string {
+	if knownProtocolVersions[requested] {
+		return requested
+	}
+	return protocolVersion
+}
+
 type Server struct {
 	repoDir string
 	target  string
@@ -94,8 +107,12 @@ func (s *Server) handleLine(line string) *rpcResponse {
 func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError) {
 	switch method {
 	case "initialize":
+		var p struct {
+			ProtocolVersion string `json:"protocolVersion"`
+		}
+		_ = json.Unmarshal(params, &p)
 		return map[string]any{
-			"protocolVersion": protocolVersion,
+			"protocolVersion": negotiateVersion(p.ProtocolVersion),
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 			"serverInfo":      map[string]any{"name": "yacr", "version": "0.1.0"},
 		}, nil
@@ -111,7 +128,11 @@ func (s *Server) dispatch(method string, params json.RawMessage) (any, *rpcError
 		if err := json.Unmarshal(params, &p); err != nil {
 			return nil, &rpcError{Code: -32602, Message: "invalid params: " + err.Error()}
 		}
-		text, isErr, ierr := s.callTool(p.Name, p.Arguments)
+		args := p.Arguments
+		if len(args) == 0 || string(args) == "null" {
+			args = json.RawMessage("{}")
+		}
+		text, isErr, ierr := s.callTool(p.Name, args)
 		if ierr != nil {
 			return nil, ierr
 		}
@@ -246,14 +267,14 @@ func (s *Server) callTool(name string, args json.RawMessage) (string, bool, *rpc
 			Line int    `json:"line"`
 			Side string `json:"side"`
 		}
-		if err := json.Unmarshal(args, &p); err != nil || p.File == "" || p.Line <= 0 {
+		if json.Unmarshal(args, &p) != nil || p.File == "" || p.Line <= 0 {
 			return toolResult(nil, fmt.Errorf("参数: {file, line, side?}"), nil)
 		}
 		res, qerr := ctx.Query(app.LocationQuery{File: p.File, Line: p.Line, End: p.Line, Side: p.Side})
 		return toolResult(res, qerr, nil)
 	case "report_upsert":
 		var in report.EntryInput
-		if err := json.Unmarshal(args, &in); err != nil {
+		if json.Unmarshal(args, &in) != nil {
 			return toolResult(nil, fmt.Errorf("EntryInput 解析失败: %v", err), nil)
 		}
 		res, verr, uerr := ctx.Service.Upsert(ctx.TargetID(), in)
@@ -262,7 +283,7 @@ func (s *Server) callTool(name string, args json.RawMessage) (string, bool, *rpc
 		var p struct {
 			IDOrSlug string `json:"id_or_slug"`
 		}
-		if err := json.Unmarshal(args, &p); err != nil || p.IDOrSlug == "" {
+		if json.Unmarshal(args, &p) != nil || p.IDOrSlug == "" {
 			return toolResult(nil, fmt.Errorf("参数: {id_or_slug}"), nil)
 		}
 		cov, verr, derr := ctx.Service.Delete(ctx.TargetID(), p.IDOrSlug)
@@ -271,7 +292,7 @@ func (s *Server) callTool(name string, args json.RawMessage) (string, bool, *rpc
 		var p struct {
 			Text string `json:"text"`
 		}
-		if err := json.Unmarshal(args, &p); err != nil {
+		if json.Unmarshal(args, &p) != nil {
 			return toolResult(nil, fmt.Errorf("参数: {text}"), nil)
 		}
 		if err := ctx.Service.SetSummary(ctx.TargetID(), p.Text); err != nil {

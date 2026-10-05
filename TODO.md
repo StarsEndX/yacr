@@ -56,14 +56,19 @@
 - 状态目录 `.yacr/`（gitignore）；binary 名 `yacr`
 - agent 无关：不内置调起任何 agent；skill 只是可选的方法论文档
 
-## 后续候选（未排期）
+## 后续候选（未排期，等真实使用反馈排优先级）
 
-- 大 diff 的分片策略（当前无上限，按文件分批 + 报告合并）
+- 旧侧行 blame 归因（cherry-pick/hotfix 免解释过滤的前置）
+- commit 过滤（--exclude-author / --exclude-commit，配合归因收缩覆盖宇宙）
+- 大 diff：超阈值时 task 警告 + skill 写明按文件迭代的工作法（agent 侧行为，不做默认分片）
 - `--include-worktree`（纳入未提交改动的 review）
-- 范围内出现 merge commit 时的显式策略（当前依赖 CI 合并约定）
+- TUI 搜索/过滤
 
 ## 已解决的设计问题
 
 1. 并发写报告：`.yacr/reports/<id>.json.lock`（flock 排他锁，变更期间持锁）
 2. 完成标记：`yacr done`（可 `--force`），记录 reviewed-head 供增量 review
 3. rename 定位：new 侧用新路径、old 侧用旧路径；纯重命名用文件级条目
+4. 范围解析 v2（ADR-0007）：无启发式，用户确认（--base / config base / 增量），候选按 tip 去重并标注最小领先
+5. merge commit：meta 标记 `merge:true`（不列文件），task 输出提示；net diff 天然抵消同步内容
+6. MCP 版本协商（回显已知版本）；commit 唯一前缀（≥4 位）；slug 唯一性强制；--range 的 head 必须为 HEAD

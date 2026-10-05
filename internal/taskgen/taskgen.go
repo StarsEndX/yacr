@@ -19,6 +19,7 @@ type CommitInfo struct {
 	SHA     string              `json:"sha"`
 	Subject string              `json:"subject"`
 	Body    string              `json:"body"`
+	Merge   bool                `json:"merge,omitempty"`
 	Files   []gitcmd.FileChange `json:"files"`
 }
 
@@ -72,15 +73,33 @@ func BaseCandidates(g *gitcmd.Git, limit int) []BaseCandidate {
 	if err != nil {
 		return nil
 	}
-	var out []BaseCandidate
+	var locals, remotes []string
 	for _, ref := range refs {
 		if ref == branch {
 			continue
 		}
+		if strings.Contains(ref, "/") {
+			remotes = append(remotes, ref)
+		} else {
+			locals = append(locals, ref)
+		}
+	}
+	ordered := append(append([]string{}, locals...), remotes...)
+	considered := ordered
+	if len(considered) > 40 {
+		considered = considered[:40]
+	}
+	var out []BaseCandidate
+	seenTip := map[string]bool{}
+	for _, ref := range considered {
 		tip, err := g.ResolveCommit(ref)
 		if err != nil {
 			continue
 		}
+		if seenTip[tip] || tip == "" {
+			continue
+		}
+		seenTip[tip] = true
 		mb, err := g.MergeBase(ref, "HEAD")
 		if err != nil || mb == "" {
 			continue
@@ -159,7 +178,7 @@ func Generate(g *gitcmd.Git, yacrDir string, opts Options) (*Result, error) {
 		if err != nil {
 			return nil, err
 		}
-		infos = append(infos, CommitInfo{SHA: c.SHA, Subject: c.Subject, Body: c.Body, Files: files})
+		infos = append(infos, CommitInfo{SHA: c.SHA, Subject: c.Subject, Body: c.Body, Merge: len(c.Parents) > 1, Files: files})
 	}
 
 	targetID := gitcmd.Short(base) + ".." + gitcmd.Short(head)
@@ -223,6 +242,17 @@ func resolveBase(g *gitcmd.Git, opts Options) (sha string, refDesc string, incre
 		base, err := g.ResolveCommit(parts[0])
 		if err != nil {
 			return "", "", false, err
+		}
+		hi, err := g.ResolveCommit(parts[1])
+		if err != nil {
+			return "", "", false, err
+		}
+		head, err := g.ResolveCommit("HEAD")
+		if err != nil {
+			return "", "", false, err
+		}
+		if hi != head {
+			return "", "", false, fmt.Errorf("--range 的 head 目前必须为 HEAD（review 固定针对当前状态）；如需 review 其他 head，请先 checkout 到对应提交")
 		}
 		return base, "range " + opts.Range, false, nil
 	}

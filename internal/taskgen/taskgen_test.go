@@ -259,8 +259,8 @@ func TestBaseCandidatesOrder(t *testing.T) {
 	r.Commit("feat commit")
 
 	cands := taskgen.BaseCandidates(r.Git, 8)
-	if len(cands) < 2 {
-		t.Fatalf("candidates: %+v", cands)
+	if len(cands) != 1 {
+		t.Fatalf("master 与 version/1.2 同 tip，应去重为 1 个候选: %+v", cands)
 	}
 	if !cands[0].Contained || cands[0].Ref != "master" {
 		t.Fatalf("首个候选应为已完全合入的同步源: %+v", cands[0])
@@ -296,5 +296,59 @@ func TestGenerateFileUnitsAndBinary(t *testing.T) {
 	}
 	if len(res.Model.FileLevelUnits()) != 2 {
 		t.Fatal("file units")
+	}
+}
+
+func TestRangeHeadMustBeHead(t *testing.T) {
+	r, yacrDir := setupAhead(t)
+	out, err := r.Run("rev-parse", "HEAD~1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := strings.TrimSpace(out)
+	_, err = taskgen.Generate(r.Git, yacrDir, taskgen.Options{Range: "main.." + old})
+	if err == nil || !strings.Contains(err.Error(), "必须为 HEAD") {
+		t.Fatalf("range head != HEAD 应报错: %v", err)
+	}
+	_, err = taskgen.Generate(r.Git, yacrDir, taskgen.Options{Range: "main..HEAD"})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMergeCommitMarked(t *testing.T) {
+	r := fixture.Init(t)
+	r.Write("a.txt", "1\n")
+	r.Commit("base")
+	r.Run("checkout", "-q", "-b", "master")
+	r.Run("checkout", "-q", "-b", "feature")
+	r.Write("b.txt", "b\n")
+	r.Commit("feat")
+	r.Run("checkout", "-q", "master")
+	r.Write("c.txt", "c\n")
+	r.Commit("master side")
+	r.Run("checkout", "-q", "feature")
+	if _, err := r.Run("merge", "--no-edit", "master"); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := taskgen.Generate(r.Git, filepath.Join(t.TempDir(), "yacr"), taskgen.Options{ExplicitBase: "master"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	merges := 0
+	for _, c := range res.Meta.Commits {
+		if c.Merge {
+			merges++
+			if len(c.Files) != 0 {
+				t.Fatalf("merge commit 不应列文件: %+v", c)
+			}
+		}
+	}
+	if merges != 1 {
+		t.Fatalf("应标记 1 个 merge commit: %+v", res.Meta.Commits)
+	}
+	if res.Stats.Commits != 2 {
+		t.Fatalf("commits: %+v", res.Stats)
 	}
 }

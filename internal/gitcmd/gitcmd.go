@@ -15,6 +15,7 @@ type Commit struct {
 	SHA     string
 	Subject string
 	Body    string
+	Parents []string
 }
 
 type FileChange struct {
@@ -146,7 +147,7 @@ func (g *Git) IsAncestor(a, b string) (bool, error) {
 }
 
 func (g *Git) Commits(base, head string) ([]Commit, error) {
-	out, err := g.Run("log", "--reverse", "--format=%H%x1f%s%x1f%b%x1e", base+".."+head)
+	out, err := g.Run("log", "--reverse", "--format=%H%x1f%s%x1f%b%x1f%P%x1e", base+".."+head)
 	if err != nil {
 		return nil, fmt.Errorf("读取提交列表失败: %w", err)
 	}
@@ -156,13 +157,18 @@ func (g *Git) Commits(base, head string) ([]Commit, error) {
 		if strings.TrimSpace(rec) == "" {
 			continue
 		}
-		parts := strings.SplitN(rec, "\x1f", 3)
+		parts := strings.SplitN(rec, "\x1f", 4)
 		c := Commit{SHA: strings.TrimSpace(parts[0])}
 		if len(parts) > 1 {
 			c.Subject = strings.TrimRight(parts[1], "\n")
 		}
 		if len(parts) > 2 {
 			c.Body = strings.Trim(parts[2], "\n")
+		}
+		if len(parts) > 3 {
+			for _, p := range strings.Fields(parts[3]) {
+				c.Parents = append(c.Parents, p)
+			}
 		}
 		commits = append(commits, c)
 	}

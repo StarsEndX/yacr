@@ -175,3 +175,39 @@ func TestMCPBadMethod(t *testing.T) {
 		t.Fatalf("unknown method: %+v", resps[0])
 	}
 }
+
+func TestMCPPVersionNegotiation(t *testing.T) {
+	repoDir := setupRepo(t)
+	resps := call(t, repoDir, []string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}`,
+		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"1999-01-01"}}`,
+	})
+	var r struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	}
+	json.Unmarshal(rawMsg(resps[0]), &r)
+	if r.ProtocolVersion != "2024-11-05" {
+		t.Fatalf("应回显已知版本: %s", r.ProtocolVersion)
+	}
+	json.Unmarshal(rawMsg(resps[1]), &r)
+	if r.ProtocolVersion != "2025-06-18" {
+		t.Fatalf("未知版本应回退到最新: %s", r.ProtocolVersion)
+	}
+}
+
+func TestMCPEmptyArguments(t *testing.T) {
+	repoDir := setupRepo(t)
+	resps := call(t, repoDir, []string{
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"report_upsert"}}`,
+	})
+	var q struct {
+		IsError bool `json:"isError"`
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	json.Unmarshal(rawMsg(resps[0]), &q)
+	if !q.IsError || !strings.Contains(q.Content[0].Text, "invalid_entry") {
+		t.Fatalf("空 arguments 应得到结构化校验错误而非解析错误: %s", q.Content[0].Text)
+	}
+}

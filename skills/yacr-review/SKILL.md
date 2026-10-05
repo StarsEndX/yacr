@@ -68,7 +68,7 @@ yacr feedback [-o out.md]                              # 导出 markdown 摘要
 - `locations[].side`：`new`=新侧行号（新增行），`old`=旧侧行号（删除行）；rename 场景 new 侧用新路径、old 侧用旧路径
 - 文件级条目（binary/纯重命名/权限变更）不写 side/start/end，只写 file
 - 定位范围可以覆盖 hunk 内的上下文行，但必须至少含一行真正的变更行
-- `slug` 是幂等更新键：重跑 review 时同 slug 更新而非新建
+- `slug` 是幂等更新键：重跑 review 时同 slug 更新而非新建；slug 全局唯一，冲突会被拒绝
 
 ## MCP 通道（会话内使用）
 

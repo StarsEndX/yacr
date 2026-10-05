@@ -290,3 +290,48 @@ func TestRenameSideMismatch(t *testing.T) {
 		t.Fatal("rename file-level coverage should be complete")
 	}
 }
+
+func TestCommitPrefixMatching(t *testing.T) {
+	e := setup(t)
+	full := e.commits[0]
+	in := report.EntryInput{
+		Title:       "x",
+		Explanation: "x",
+		Locations:   []report.Location{loc("a.txt", "new", 2, 2)},
+	}
+	in.Commits = []string{full[:9]}
+	if _, verr, _ := e.svc.Upsert(e.targetID, in); verr != nil {
+		t.Fatalf("9 位前缀应可匹配: %v", verr)
+	}
+	in.Commits = []string{full[:3]}
+	if _, verr, _ := e.svc.Upsert(e.targetID, in); verr == nil || verr.Code != "commit_unknown" {
+		t.Fatalf("过短前缀应拒绝: %v", verr)
+	}
+}
+
+func TestSlugUniqueness(t *testing.T) {
+	e := setup(t)
+	in := report.EntryInput{
+		Slug: "a", Title: "t1", Explanation: "x",
+		Locations: []report.Location{loc("a.txt", "new", 2, 2)},
+	}
+	if _, verr, _ := e.svc.Upsert(e.targetID, in); verr != nil {
+		t.Fatal(verr)
+	}
+	in2 := report.EntryInput{
+		Slug: "b", Title: "t2", Explanation: "x",
+		Locations: []report.Location{loc("a.txt", "new", 5, 5), loc("a.txt", "old", 5, 5)},
+	}
+	res, verr, _ := e.svc.Upsert(e.targetID, in2)
+	if verr != nil {
+		t.Fatal(verr)
+	}
+	in2.ID = res.Entry.ID
+	in2.Slug = "a"
+	if _, verr, _ := e.svc.Upsert(e.targetID, in2); verr == nil || verr.Code != "duplicate_slug" {
+		t.Fatalf("slug 冲突应拒绝: %v", verr)
+	}
+	if len(e.svc.Load(e.targetID).Entries) != 2 {
+		t.Fatal("被拒绝的更新不应产生新条目")
+	}
+}
