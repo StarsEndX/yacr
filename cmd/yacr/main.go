@@ -21,6 +21,8 @@ func exitf(code int, format string, args ...any) error {
 	return &exitError{code: code, err: fmt.Errorf(format, args...)}
 }
 
+var version = "0.1.0"
+
 func usage() string {
 	return `yacr — 意图追踪式 AI code review 工具
 
@@ -41,6 +43,8 @@ func usage() string {
                导出 markdown 摘要
   yacr serve   [--repo <dir>]
                MCP server（stdio，供 agent 会话使用）
+  yacr version
+               输出版本号
 
 全局:
   --repo <dir>   目标仓库目录（默认当前目录）
@@ -75,6 +79,8 @@ func main() {
 		err, code = cmdFeedback(rest)
 	case "serve":
 		err, code = cmdServe(rest)
+	case "version":
+		fmt.Printf("yacr %s\n", version)
 	case "help", "-h", "--help":
 		fmt.Print(usage())
 	default:

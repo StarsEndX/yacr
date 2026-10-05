@@ -327,3 +327,10 @@ func TestE2EExplicitRangeAndFileUnit(t *testing.T) {
 		t.Fatalf("validate json: %s", res.stdout)
 	}
 }
+
+func TestE2EVersion(t *testing.T) {
+	res := runYacr(t, t.TempDir(), "", "version")
+	if res.code != 0 || !strings.HasPrefix(res.stdout, "yacr ") {
+		t.Fatalf("version: code=%d out=%q", res.code, res.stdout)
+	}
+}
