@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"yacr/internal/app"
+	"yacr/internal/config"
 	"yacr/internal/gitcmd"
 	"yacr/internal/session"
 	"yacr/internal/taskgen"
@@ -42,9 +43,11 @@ func cmdTask(args []string) (error, int) {
 	lastReviewed := func(branch string) (string, bool) {
 		return session.LastReviewedHead(yacrDir, branch)
 	}
+	cfg := config.Load(yacrDir)
 	res, err := taskgen.Generate(repo, yacrDir, taskgen.Options{
 		ExplicitBase: *baseRef,
 		Range:        *rng,
+		ConfigBase:   cfg.BaseRef,
 		LastReviewed: lastReviewed,
 	})
 	if err != nil {

@@ -18,6 +18,9 @@ description: 使用 yacr 工具做"意图追踪式" code review：对功能分�
 
 ```
 1. yacr task --json            # 若任务已生成则跳过；得到 target_id、变更统计、任务包路径
+   # 注意：task 无确认 base 时会拒绝并列出候选分支——这是设计行为。
+   # 此时向用户确认"同步源"分支（变更从哪里流出，如 origin/master，不是合入目标），
+   # 然后由用户执行 yacr config base <ref>（永久）或告诉你 --base（一次性）。不要替用户猜。
 2. 读取任务包                   # meta.json（提交列表）/ changes.jsonl（行级索引+blame归因）/ diff.patch
 3. 调研每处变更的意图            # 读周边代码、git log -L、追引用；跨 commit 的同一意图合并为一个条目
 4. yacr report upsert ...      # 分批写入解释（见下方格式）

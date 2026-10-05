@@ -28,7 +28,8 @@ func usage() string {
 
 用法:
   yacr task    [--base <ref> | --range <base>..<head>] [--repo <dir>] [--json]
-               解析 review 范围并生成任务包
+               解析 review 范围并生成任务包（base 必须已确认：
+               --base 一次性 / yacr config base 永久 / done 后自动增量）
   yacr show    [<file>[:<line>[-<end>]][:<side>]] [--repo <dir>] [--json]
                查询变更总览 / 某文件 / 某行的变更事实与已有解释
   yacr report  list | upsert | delete | summary [--repo <dir>] [--json]
@@ -43,6 +44,8 @@ func usage() string {
                导出 markdown 摘要
   yacr serve   [--repo <dir>]
                MCP server（stdio，供 agent 会话使用）
+  yacr config  base <ref> | base --unset | get
+               记忆/清除/查看 review 的 base 同步源
   yacr version
                输出版本号
 
@@ -80,6 +83,8 @@ func main() {
 		err, code = cmdFeedback(rest)
 	case "serve":
 		err, code = cmdServe(rest)
+	case "config":
+		err, code = cmdConfig(rest)
 	case "version":
 		fmt.Printf("yacr %s\n", version)
 	case "help", "-h", "--help":

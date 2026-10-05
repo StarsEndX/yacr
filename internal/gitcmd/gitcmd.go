@@ -247,3 +247,29 @@ func Short(sha string) string {
 	}
 	return sha
 }
+
+func (g *Git) Branches() ([]string, error) {
+	out, err := g.Run("for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes")
+	if err != nil {
+		return nil, fmt.Errorf("读取分支列表失败: %w", err)
+	}
+	var names []string
+	for _, ln := range strings.Split(out, "\n") {
+		ln = strings.TrimSpace(ln)
+		if ln == "" || strings.Contains(ln, "HEAD") {
+			continue
+		}
+		names = append(names, ln)
+	}
+	return names, nil
+}
+
+func (g *Git) CountCommits(base, head string) (int, error) {
+	out, err := g.Run("rev-list", "--count", base+".."+head)
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	fmt.Sscanf(strings.TrimSpace(out), "%d", &n)
+	return n, nil
+}

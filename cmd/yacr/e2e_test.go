@@ -68,6 +68,9 @@ func setupRepo(t *testing.T) *fixture.Repo {
 	r.Write("auth.go", "package main\n\nfunc login(u string) bool { return u != \"\" }\n")
 	r.Write("app.go", "package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println(user()) }\n\nfunc user() string { return \"anon\" }\n\nfunc extra() { _ = login(\"x\") }\n")
 	r.Commit("feat: add auth")
+	if res := runYacr(t, r.Dir, "", "config", "base", "main"); res.code != 0 {
+		t.Fatalf("config base: %s", res.stderr)
+	}
 	return r
 }
 
@@ -270,6 +273,43 @@ func TestE2EValidationErrors(t *testing.T) {
 	res = runYacr(t, r.Dir, "", "show", "app.go:20")
 	if res.code != 0 || !strings.Contains(res.stdout, "不在变更区域内") {
 		t.Fatalf("show 范围外行: %s\n%s", res.stdout, res.stderr)
+	}
+}
+
+func TestE2ETaskRefusesWithoutConfirmedBase(t *testing.T) {
+	r := setupRepo(t)
+	if res := runYacr(t, r.Dir, "", "config", "base", "--unset"); res.code != 0 {
+		t.Fatalf("unset: %s", res.stderr)
+	}
+	res := runYacr(t, r.Dir, "", "task")
+	if res.code != 1 {
+		t.Fatalf("无确认 base 应拒绝: code=%d", res.code)
+	}
+	for _, want := range []string{"不做启发式猜测", "main", "候选分支", "yacr config base"} {
+		if !strings.Contains(res.stderr, want) {
+			t.Fatalf("拒绝信息应含 %q:\n%s", want, res.stderr)
+		}
+	}
+
+	res = runYacr(t, r.Dir, "", "config", "base", "main")
+	if res.code != 0 {
+		t.Fatalf("config base: %s", res.stderr)
+	}
+	res = runYacr(t, r.Dir, "", "task")
+	if res.code != 0 {
+		t.Fatalf("config 后 task 应成功: %s", res.stderr)
+	}
+	if !strings.Contains(res.stdout, "base 来源: main (config)") {
+		t.Fatalf("task 输出应标注 config 来源: %s", res.stdout)
+	}
+
+	res = runYacr(t, r.Dir, "", "config", "get", "--json")
+	if res.code != 0 || !strings.Contains(res.stdout, "main") {
+		t.Fatalf("config get: %s", res.stdout)
+	}
+	res = runYacr(t, r.Dir, "", "config", "base", "no-such-ref")
+	if res.code != 1 || !strings.Contains(res.stderr, "不存在") {
+		t.Fatalf("坏 ref 应拒绝: code=%d %s", res.code, res.stderr)
 	}
 }
 

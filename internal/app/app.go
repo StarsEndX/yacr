@@ -33,6 +33,8 @@ func FindRepoDir(start string) (string, error) {
 	return top, nil
 }
 
+func NewGit(repoDir string) *gitcmd.Git { return gitcmd.New(repoDir) }
+
 func Load(repoDir, targetID string) (*Ctx, error) {
 	yacrDir := filepath.Join(repoDir, ".yacr")
 	if targetID == "" {

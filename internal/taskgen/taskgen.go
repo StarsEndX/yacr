@@ -51,8 +51,57 @@ type Result struct {
 type Options struct {
 	ExplicitBase string
 	Range        string
+	ConfigBase   string
 	LastReviewed func(branch string) (string, bool)
 	Now          func() time.Time
+}
+
+type BaseCandidate struct {
+	Ref       string
+	MergeBase string
+	Ahead     int
+	Contained bool
+}
+
+func BaseCandidates(g *gitcmd.Git, limit int) []BaseCandidate {
+	branch, err := g.CurrentBranch()
+	if err != nil {
+		return nil
+	}
+	refs, err := g.Branches()
+	if err != nil {
+		return nil
+	}
+	var out []BaseCandidate
+	for _, ref := range refs {
+		if ref == branch {
+			continue
+		}
+		tip, err := g.ResolveCommit(ref)
+		if err != nil {
+			continue
+		}
+		mb, err := g.MergeBase(ref, "HEAD")
+		if err != nil || mb == "" {
+			continue
+		}
+		ahead, err := g.CountCommits(mb, "HEAD")
+		if err != nil || ahead == 0 {
+			continue
+		}
+		contained, _ := g.IsAncestor(tip, "HEAD")
+		out = append(out, BaseCandidate{Ref: ref, MergeBase: mb, Ahead: ahead, Contained: contained})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Contained != out[j].Contained {
+			return out[i].Contained
+		}
+		return out[i].Ahead < out[j].Ahead
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
 }
 
 func Generate(g *gitcmd.Git, yacrDir string, opts Options) (*Result, error) {
@@ -193,25 +242,46 @@ func resolveBase(g *gitcmd.Git, opts Options) (sha string, refDesc string, incre
 			}
 		}
 	}
-	out, uerr := g.Run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
-	if uerr == nil {
-		up := strings.TrimSpace(out)
-		if up != "" {
-			sha, err := g.MergeBase(up, "HEAD")
-			if err == nil {
-				return sha, "upstream " + up, false, nil
+	if opts.ConfigBase != "" {
+		if _, err := g.ResolveCommit(opts.ConfigBase); err != nil {
+			return "", "", false, fmt.Errorf("config 中的 base_ref %q 无法解析: %w", opts.ConfigBase, err)
+		}
+		sha, err := g.MergeBase(opts.ConfigBase, "HEAD")
+		if err != nil {
+			return "", "", false, fmt.Errorf("解析 config base %s 失败: %w", opts.ConfigBase, err)
+		}
+		return sha, opts.ConfigBase + " (config)", false, nil
+	}
+	return "", "", false, refuseNoBase(g)
+}
+
+func refuseNoBase(g *gitcmd.Git) error {
+	var b strings.Builder
+	b.WriteString("无法确定 review 范围的 base：yacr 不做启发式猜测。\n")
+	b.WriteString("base 应为变更同步源（变更从哪里流出，如 origin/master）；注意不是合入目标分支——\n")
+	b.WriteString("若 feature 已包含同步源的 hotfix，对合入目标取 diff 会把这些内容误算进 review 范围。\n")
+	if cands := BaseCandidates(g, 8); len(cands) > 0 {
+		minAhead := cands[0].Ahead
+		for _, c := range cands {
+			if c.Ahead < minAhead {
+				minAhead = c.Ahead
 			}
 		}
-	}
-	for _, cand := range []string{"develop", "dev", "main", "master"} {
-		if g.HasRef(cand) {
-			sha, err := g.MergeBase(cand, "HEAD")
-			if err == nil {
-				return sha, cand, false, nil
+		b.WriteString("\n候选分支:\n")
+		for _, c := range cands {
+			note := ""
+			if c.Ahead == minAhead {
+				note = "  ← 领先最少（通常即本次工作）"
 			}
+			b.WriteString(fmt.Sprintf("  %-24s base %s  领先 %d commits%s\n", c.Ref, gitcmd.Short(c.MergeBase), c.Ahead, note))
 		}
+	} else {
+		b.WriteString("\n（未找到可用候选分支）\n")
 	}
-	return "", "", false, fmt.Errorf("无法确定 review 范围：未指定 --base、无已完成的 review 记录、无 upstream，且 develop/main/master 均不存在")
+	b.WriteString("\n确认方式:\n")
+	b.WriteString("  一次性: yacr task --base <ref>\n")
+	b.WriteString("  永久:   yacr config base <ref>   （写入 .yacr/config，之后 task 直接使用）")
+	return fmt.Errorf("%s", b.String())
 }
 
 type changeRecord struct {

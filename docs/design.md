@@ -22,9 +22,19 @@ AI 侧（任意 agent，两种通道同语义）:
 
 ## 2. 范围解析
 
-- 场景：功能分支领先开发分支（CI 合并），范围内线性历史，无 merge commit
-- base = merge-base(<target_ref>, HEAD)，target_ref 优先级：`--base` 显式指定 > 上次增量 head > upstream `@{u}` > develop/main/master
-- head = HEAD
+**无启发式默认**：base 必须是用户确认过的事实。两个分支角色——同步源（变更从哪里流出，如 origin/master）与合入目标（CI 合入处，如 version/x.y.z）——base 永远取同步源；若 feature 已含同步源 hotfix，对合入目标取 diff 会误把它们算进范围。
+
+解析顺序（先命中先用）：
+
+1. `--range <a>..<b>`：完全显式
+2. `--base <ref>`：显式同步源，取 merge-base(ref, HEAD)
+3. 增量：同分支 reviewed-head（`done` 确认过的延续）且为 HEAD 祖先
+4. 记忆 base：`.yacr/config` 的 `base_ref`（`yacr config base <ref>` 写入）
+5. 拒绝：不做猜测，列出候选分支（含 merge-base/领先数/是否已完全合入）与确认方式
+
+`@{u}` upstream 不作默认（通常是 push 目标而非同步源），仅进候选列表。
+
+- head = HEAD；范围内出现 merge commit 目前仅降噪容忍（详见 TODO）
 - 工作区必须干净（综合 diff 语义要求）
 
 ## 3. 变更模型（行级）

@@ -31,7 +31,12 @@ func setupAhead(t *testing.T) (*fixture.Repo, string) {
 func TestGenerateBundle(t *testing.T) {
 	r, yacrDir := setupAhead(t)
 
-	res, err := taskgen.Generate(r.Git, yacrDir, taskgen.Options{})
+	_, err := taskgen.Generate(r.Git, yacrDir, taskgen.Options{})
+	if err == nil || !strings.Contains(err.Error(), "不做启发式猜测") {
+		t.Fatalf("无 base 时应拒绝: %v", err)
+	}
+
+	res, err := taskgen.Generate(r.Git, yacrDir, taskgen.Options{ExplicitBase: "main"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +141,7 @@ func TestGenerateRefusesNoAhead(t *testing.T) {
 	r := fixture.Init(t)
 	r.Write("a.txt", "x\n")
 	r.Commit("only")
-	_, err := taskgen.Generate(r.Git, filepath.Join(t.TempDir(), "yacr"), taskgen.Options{})
+	_, err := taskgen.Generate(r.Git, filepath.Join(t.TempDir(), "yacr"), taskgen.Options{ExplicitBase: "main"})
 	if err == nil || !strings.Contains(err.Error(), "没有领先提交") {
 		t.Fatalf("should refuse empty range: %v", err)
 	}
@@ -195,7 +200,7 @@ func TestResolveBasePriority(t *testing.T) {
 	}
 }
 
-func TestUpstreamBase(t *testing.T) {
+func TestNoHeuristicBase(t *testing.T) {
 	r := fixture.Init(t)
 	r.Write("a.txt", "base\n")
 	r.Commit("base")
@@ -207,16 +212,63 @@ func TestUpstreamBase(t *testing.T) {
 	}
 	r.Write("a.txt", "base\nfeat\n")
 	r.Commit("feat commit")
+	yacrDir := filepath.Join(t.TempDir(), "yacr")
 
-	res, err := taskgen.Generate(r.Git, filepath.Join(t.TempDir(), "yacr"), taskgen.Options{})
+	_, err := taskgen.Generate(r.Git, yacrDir, taskgen.Options{})
+	if err == nil {
+		t.Fatal("无任何确认来源时应拒绝")
+	}
+	msg := err.Error()
+	for _, want := range []string{"develop", "候选分支", "yacr config base"} {
+		if !strings.Contains(msg, want) {
+			t.Fatalf("拒绝信息应含 %q:\n%s", want, msg)
+		}
+	}
+
+	res, err := taskgen.Generate(r.Git, yacrDir, taskgen.Options{ConfigBase: "develop"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Meta.BaseRef != "develop" {
-		t.Fatalf("base ref should be develop: %s", res.Meta.BaseRef)
+	if res.Meta.BaseRef != "develop (config)" {
+		t.Fatalf("config base: %s", res.Meta.BaseRef)
 	}
 	if res.Meta.Branch != "feature" {
 		t.Fatalf("branch: %s", res.Meta.Branch)
+	}
+
+	_, err = taskgen.Generate(r.Git, yacrDir, taskgen.Options{ConfigBase: "no-such-ref"})
+	if err == nil || !strings.Contains(err.Error(), "无法解析") {
+		t.Fatalf("坏 config base 应报错: %v", err)
+	}
+}
+
+func TestBaseCandidatesOrder(t *testing.T) {
+	r := fixture.Init(t)
+	r.Write("a.txt", "base\n")
+	r.Commit("base")
+	if _, err := r.Run("branch", "-M", "master"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Run("branch", "version/1.2"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Run("checkout", "-q", "-b", "feature"); err != nil {
+		t.Fatal(err)
+	}
+	r.Write("a.txt", "base\nfeat\n")
+	r.Commit("feat commit")
+
+	cands := taskgen.BaseCandidates(r.Git, 8)
+	if len(cands) < 2 {
+		t.Fatalf("candidates: %+v", cands)
+	}
+	if !cands[0].Contained || cands[0].Ref != "master" {
+		t.Fatalf("首个候选应为已完全合入的同步源: %+v", cands[0])
+	}
+	for _, c := range cands {
+		if c.Ahead == 0 {
+			t.Fatalf("ahead=0 不应入选: %+v", c)
+		}
 	}
 }
 
