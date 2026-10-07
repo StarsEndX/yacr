@@ -35,10 +35,10 @@ review 范围 = `merge-base(base, HEAD)..HEAD`。base 必须是用户确认过�
 make help    # 查看可用目标
 make build   # 产出 bin/yacr
 make test    # go test ./...
-make install DESTDIR=$HOME/.local/bin   # 安装（必须显式指定目录）
+make install DESTDIR=~/.local/bin   # 安装（必须显式指定目录，支持 ~ 展开）
 ```
 
-`install` 无默认目录。安装目录需在 `PATH` 中，MCP 配置里的 `command: ["yacr", ...]` 才能解析到；否则在 MCP/skill 配置中改用绝对路径。
+`install` 无默认目录。安装目录需在 `PATH` 中，MCP 配置里的 `command: ["yacr", ...]` 才能解析到；否则在 MCP/skill 配置中改用绝对路径（`make install` 会提示）。
 
 ### 快速上手
 
@@ -107,10 +107,10 @@ Requires Go 1.26+ and git (invoked via shell-out, relying on real git semantics)
 make help    # list available targets
 make build   # produces bin/yacr
 make test    # go test ./...
-make install DESTDIR=$HOME/.local/bin   # install (destination is required)
+make install DESTDIR=~/.local/bin   # install (destination is required, ~ is expanded)
 ```
 
-`install` has no default destination. The destination must be on `PATH` so MCP config `command: ["yacr", ...]` resolves; otherwise use an absolute path in the MCP/skill config.
+`install` has no default destination. The destination must be on `PATH` so MCP config `command: ["yacr", ...]` resolves; otherwise use an absolute path in the MCP/skill config (`make install` prints a hint).
 
 ### Quick start
 
