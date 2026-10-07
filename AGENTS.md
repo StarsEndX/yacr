@@ -21,7 +21,7 @@
 - 报告为工具所有，只能经固定接口（CLI/MCP 同语义）变更，每次变更即时校验
 - 报告不依赖 agent 的文件编辑能力
 - TUI 纯只读
-- MCP `tools/list` 的 `inputSchema` 必须是合法 JSON Schema：`properties` 为空也要输出 `{}` 而非 `null`，`required` 为空则省略——opencode 等严格客户端会因 `null` 拒绝整个工具列表
+- MCP `tools/list` 的 `inputSchema` 必须是合法 JSON Schema：`properties` 为空时输出 `{}`（`null` 会让 opencode 等严格客户端拒绝整个工具列表），`required` 为空则省略
 - merge commit 仅降噪容忍（meta 标记 merge:true、task 输出提示；真实合并由 CI 负责），hunk/行 ID 在任务内全局稳定
 
 ## 约定
@@ -29,13 +29,14 @@
 - 不写注释，除非用户要求
 - 错误处理：wrap with `%w`；对外 CLI 错误信息人类可读
 - 标识符英文，文档中文；解释内容默认中文（由 skill/prompt 约定）
+- skill/prompt 文案用平实直陈句，避免“否定+转折肯定”式对偶修辞——模型会模仿指令文风，导致输出风格污染
 - 测试优先用 `t.TempDir()` + 真实 git 命令构造 fixture（`internal/fixture`），自动清理，不触碰真实仓库与全局 git 配置（身份经 `-c user.*` 与 env 注入）；diff 解析测试用内联 diff 文本（无 testdata/golden files）
 - commit message：conventional commits；不主动 commit/push
 - UI 文案中文
 
 ## 设计决策记录
 
-- ADR-0001 git 走 shell-out 而非 go-git：rename 检测、merge-base、blame 语义更可靠，fixture 测试也依赖真实 git
+- ADR-0001 git 走 shell-out（不用 go-git）：rename 检测、merge-base、blame 语义更可靠，fixture 测试也依赖真实 git
 - ADR-0002 报告为结构化 JSON（非 markdown）：TUI 需要 commit hash + 行锚定做组合渲染
 - ADR-0003 agent 无关：工具不调起 agent，只提供 CLI/MCP 固定接口；skill 仅是可选方法论文档
 - ADR-0004 工作区不干净时拒绝 review（综合 diff 语义要求）

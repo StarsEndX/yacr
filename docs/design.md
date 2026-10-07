@@ -32,7 +32,7 @@ AI 侧（任意 agent，两种通道同语义）:
 4. 记忆 base：`.yacr/config` 的 `base_ref`（`yacr config base <ref>` 写入）
 5. 拒绝：不做猜测，列出候选分支（含 merge-base/领先数/是否已完全合入）与确认方式
 
-`@{u}` upstream 不作默认（通常是 push 目标而非同步源），仅进候选列表。
+`@{u}` upstream 通常只是 push 目标，仅进候选列表，不作默认。
 
 - head = HEAD；范围内出现 merge commit 目前仅降噪容忍（详见 TODO）
 - 工作区必须干净（综合 diff 语义要求）
