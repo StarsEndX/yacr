@@ -211,3 +211,76 @@ func TestMCPEmptyArguments(t *testing.T) {
 		t.Fatalf("空 arguments 应得到结构化校验错误而非解析错误: %s", q.Content[0].Text)
 	}
 }
+
+func TestMCPToolSchemas(t *testing.T) {
+	repoDir := setupRepo(t)
+	resps := call(t, repoDir, []string{`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`})
+	var list struct {
+		Tools []struct {
+			Name        string `json:"name"`
+			InputSchema struct {
+				Type       string         `json:"type"`
+				Properties map[string]any `json:"properties"`
+				Required   any            `json:"required"`
+			} `json:"inputSchema"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(rawMsg(resps[0]), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Tools) == 0 {
+		t.Fatal("tools/list 为空")
+	}
+	for _, tl := range list.Tools {
+		if tl.InputSchema.Type != "object" {
+			t.Errorf("%s: inputSchema.type = %q，应为 object", tl.Name, tl.InputSchema.Type)
+		}
+		if tl.InputSchema.Properties == nil {
+			t.Errorf("%s: inputSchema.properties 为 null，严格 MCP 客户端会拒绝该工具", tl.Name)
+		}
+		if tl.InputSchema.Required != nil {
+			if _, ok := tl.InputSchema.Required.([]any); !ok {
+				t.Errorf("%s: inputSchema.required 非数组: %T", tl.Name, tl.InputSchema.Required)
+			}
+		}
+	}
+}
+
+func TestMCPReadToolsNotNull(t *testing.T) {
+	repoDir := setupRepo(t)
+	resps := call(t, repoDir, []string{
+		toolCallReq(1, "get_task", nil),
+		toolCallReq(2, "get_files", nil),
+		toolCallReq(3, "get_commits", nil),
+		toolCallReq(4, "get_diff", nil),
+		toolCallReq(5, "get_diff", map[string]any{"file": "a.txt"}),
+		toolCallReq(6, "report_upsert", map[string]any{
+			"slug": "s", "title": "t", "explanation": "e",
+			"locations": []map[string]any{
+				{"file": "a.txt", "side": "new", "start": 2, "end": 2},
+				{"file": "a.txt", "side": "old", "start": 2, "end": 2},
+				{"file": "a.txt", "side": "new", "start": 4, "end": 4},
+			},
+		}),
+		toolCallReq(7, "report_summary", map[string]any{"text": "总评"}),
+		toolCallReq(8, "report_delete", map[string]any{"id_or_slug": "s"}),
+	})
+	for i, r := range resps {
+		var q struct {
+			IsError bool `json:"isError"`
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		}
+		if err := json.Unmarshal(rawMsg(r), &q); err != nil {
+			t.Fatalf("tool %d 响应解析失败: %v", i+1, err)
+		}
+		if q.IsError {
+			t.Errorf("tool %d 返回错误: %s", i+1, q.Content[0].Text)
+		}
+		if len(q.Content) == 0 || q.Content[0].Text == "" || q.Content[0].Text == "null" {
+			t.Errorf("tool %d 返回空/null 结果", i+1)
+		}
+	}
+}
+

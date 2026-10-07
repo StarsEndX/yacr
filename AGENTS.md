@@ -21,6 +21,7 @@
 - 报告为工具所有，只能经固定接口（CLI/MCP 同语义）变更，每次变更即时校验
 - 报告不依赖 agent 的文件编辑能力
 - TUI 纯只读
+- MCP `tools/list` 的 `inputSchema` 必须是合法 JSON Schema：`properties` 为空也要输出 `{}` 而非 `null`，`required` 为空则省略——opencode 等严格客户端会因 `null` 拒绝整个工具列表
 - merge commit 仅降噪容忍（meta 标记 merge:true、task 输出提示；真实合并由 CI 负责），hunk/行 ID 在任务内全局稳定
 
 ## 约定

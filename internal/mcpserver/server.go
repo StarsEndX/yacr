@@ -159,10 +159,17 @@ func toolDefs() []map[string]any {
 		"required": []string{"file"},
 	}
 	mk := func(name, desc string, props map[string]any, required []string) map[string]any {
+		if props == nil {
+			props = map[string]any{}
+		}
+		schema := map[string]any{"type": "object", "properties": props}
+		if len(required) > 0 {
+			schema["required"] = required
+		}
 		return map[string]any{
 			"name":        name,
 			"description": desc,
-			"inputSchema": map[string]any{"type": "object", "properties": props, "required": required},
+			"inputSchema": schema,
 		}
 	}
 	return []map[string]any{
@@ -274,8 +281,8 @@ func (s *Server) callTool(name string, args json.RawMessage) (string, bool, *rpc
 		return toolResult(res, qerr, nil)
 	case "report_upsert":
 		var in report.EntryInput
-		if json.Unmarshal(args, &in) != nil {
-			return toolResult(nil, fmt.Errorf("EntryInput 解析失败: %v", err), nil)
+		if jerr := json.Unmarshal(args, &in); jerr != nil {
+			return toolResult(nil, fmt.Errorf("EntryInput 解析失败: %v", jerr), nil)
 		}
 		res, verr, uerr := ctx.Service.Upsert(ctx.TargetID(), in)
 		return toolResult(res, uerr, verr)
