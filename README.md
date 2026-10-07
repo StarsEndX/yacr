@@ -32,9 +32,13 @@ review 范围 = `merge-base(base, HEAD)..HEAD`。base 必须是用户确认过�
 需要 Go 1.26+ 与 git（shell-out 调用，依赖真实 git 语义）。
 
 ```sh
+make help    # 查看可用目标
 make build   # 产出 bin/yacr
 make test    # go test ./...
+make install DESTDIR=$HOME/.local/bin   # 安装（必须显式指定目录）
 ```
+
+`install` 无默认目录。安装目录需在 `PATH` 中，MCP 配置里的 `command: ["yacr", ...]` 才能解析到；否则在 MCP/skill 配置中改用绝对路径。
 
 ### 快速上手
 
@@ -100,9 +104,13 @@ Review range = `merge-base(base, HEAD)..HEAD`. The base must be a user-confirmed
 Requires Go 1.26+ and git (invoked via shell-out, relying on real git semantics).
 
 ```sh
+make help    # list available targets
 make build   # produces bin/yacr
 make test    # go test ./...
+make install DESTDIR=$HOME/.local/bin   # install (destination is required)
 ```
+
+`install` has no default destination. The destination must be on `PATH` so MCP config `command: ["yacr", ...]` resolves; otherwise use an absolute path in the MCP/skill config.
 
 ### Quick start
 
